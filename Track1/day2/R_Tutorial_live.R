@@ -338,7 +338,9 @@ names(agg_conditions) <- c("Condition", "Mean RT", "SD")
 # Compute Kolmogorov-Smirnov-Lilliefors-Test for normality of distribution 
 # If we get a significant result for one of the groups, 
 # this means we don't have normality of distribution 
-# and we have to test non-parametrical.
+# and we have to test non-parametrically.
+
+# Careful, normally you wouldn't test anything with such a small sample.
 
 
 # If we don't get significant results, we can use 
