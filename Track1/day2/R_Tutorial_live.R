@@ -42,6 +42,7 @@ remove(list = ls())
 
 # create a list with needed libraries
 pkgs <- c("ggplot2", # for plots
+          "lattice", # for ugly but fast density plots
           "car", # for Shapiro-Wilk-Test
           "ez") # for ANOVA
 
@@ -54,16 +55,18 @@ for (pkg in pkgs){
   }
 }
 
+rm(pkg, pkgs) # clean up helper variables
+
 # ----------------------------------------------------------------
 
 # 2. Load data and do some preprocessing
 
 # 2.1 set working directory (= path to the file your data are in)
 # set your own path here:
-setwd('/Users/merle/Desktop/RSE_data') 
+setwd('/Users/merle/Github/SpringSchool2023/Track1/day2/RSE_data') 
 # Please notice we're always using normal slashes /, 
 # backslashes \ don't work here.
-# -> Have an eye on this if you're a Windows user!
+# --> Have an eye on this if you're a Windows user!
 
 # 2.2 Get the list of files in the directory
 file_list <- list.files(pattern='.csv')
@@ -74,7 +77,7 @@ file_list <- list.files(pattern='.csv')
 # Create empty dataframes as placeholder for 
 # the df where you collect all our data & 
 # one for the demographic information
-df_data <- data.frame() 
+df_data         <- data.frame() 
 df_demographics <- data.frame()
 
 # 2.3.2 loop datasets aka participants:
@@ -106,24 +109,26 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   }
   
   # We could also use multiple conditions to exclude people. 
-  # For example, we could exclude all people who didn't state their gender or are 
-  # female:
-  #if (gender == "female" | gender == "no_ans") { 
+  # For example, we could play old white men in academia & 
+  # exclude all people who are female or non-binary:
+  #if (gender == "female" | gender == "nb") { 
   #  exclude_participant <- T
   #} else {
   #  exclude_participant <- F
   #} 
  
-  # But we don't care about gender here, so let's keep them all.
+  # But we don't do that here. :-)
   
   
-  # 2.3.2.7 Now get data (RTs and condition names):
+  # 2.3.2.7 Now get data (Reaction times (= RTs) and condition names):
   
   # get position of column with reaction times (durations) and condition names
   col_cond <- which(names(subj_df) == "condition")
   col_RTs <- which(names(subj_df) == "duration")
+  
   # get only a part of subj_df
   RT_data <- subset(subj_df, sender == "Reaction")[c(col_cond, col_RTs)] # get only a part of subj_df
+  
   # RT_data is now a matrix with 2 columns, but we have to covert it to a dataframe
   RT_data <- as.data.frame(RT_data)
   
@@ -135,13 +140,15 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   names(RT_data) <- c("condition", "reaction_time")
   
   # exclude all trials in which the reaction time is either 
-  # too short (< 100 ms) or too long (> 700 ms).
-  # If the participant didn't react, the RT is 1500 ms, 
+  # too short (< 100 ms) or too long (> 500 ms, this is an arbitrary value btw).
+  # If the participant didn't react, the RT is about 1500 ms, 
   # so we kick non-reactions out as well with these criteria.
-  RT_data_clean <- subset(RT_data, reaction_time >= 100 & reaction_time <= 700)
+  RT_data_clean <- subset(RT_data, reaction_time >= 100 & reaction_time <= 500)
   
   # how many trials did we exclude because they were too short or too long?
   trials_excluded <- length(RT_data$reaction_time) - length(RT_data_clean$reaction_time)
+  # show this as a message when you run the script
+  message( paste("excluded" , trials_excluded, "trials") ) # with paste() you can merge strings together!
   
   # If the participant always reacted too slow or didn't 
   # react in general (in this case the RT is saved as 1500 ms aka too long),
@@ -159,9 +166,12 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   # df consisting of 1 row and 8 columns 
   dem <- as.data.frame(cbind(id, age, gender, 
                              exclude_participant, trials_excluded))
-  # add to big df with all participants as new row, so there's 1 row for each participant
-  df_demographics <- as.data.frame(rbind(df_demographics, dem))
   
+  # Remember the empty dfs we defined before the loop 
+  # where we wanted to collect our demographical data & RTs?
+  # Add our small df for the current subject as new row to the demographical 
+  # data df from the beginning so there's 1 row for each participant:
+  df_demographics <- as.data.frame(rbind(df_demographics, dem))
   
   # df 2: 
   # create a vector that contains the subject ID, but repeat it 
@@ -182,14 +192,19 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
 #View(df_data)
 #View(df_demographics)
 
-# 2.3.4 Now exclude all participants who were marked before as to be excluded:
+
+# 2.3.4 Now exclude all participants who were marked before as to be excluded.
+# Find out in which rows we set "exclude_participant" to TRUE:
 pos_excl <- which(df_demographics$exclude_participant == T)
-# get their codes 
+# get the IDs from those rows - those are the 
+# participants we want to kick out (lovingly ofc):
 id_excl <- df_demographics[pos_excl,]$id
+
 # copy df_data and name the copy df_data_clean
 df_data_clean <- df_data
+
 # loop ids, only get subset of df_data_clean 
-# where the id is not the id we want to exclude
+# where the id is not(!) the id we want to exclude
 for (id in id_excl){
   df_data_clean <- subset(df_data_clean, participant_ID != id)
 }
@@ -201,21 +216,78 @@ for (id in id_excl){
 unique(df_data_clean$participant_ID)
 
 # ----------------------------------------------------------------
+
+# Before doing anything, have a look at the data:
+
+# Plot the distribution of our RTs in all 3 conditions:
+subset_v  = subset(df_data_clean, condition == "V")$reaction_time
+subset_a  = subset(df_data_clean, condition == "A")$reaction_time
+subset_va = subset(df_data_clean, condition == "VA")$reaction_time
+
+plot(density(subset_v),   # data for condition V
+     ylim = c(0, 0.015),  # set y-axis limits for plot
+     xlim = c(0, 700),    # set x-axis limits for plot
+     col = "indianred4")  # set colour for condition V
+lines(density(subset_a),  # data for condition A
+      col = "indianred3") # set colour for condition A
+lines(density(subset_va), # data for condition VA
+      col = "seagreen")   # set colour for condition VA
+
+# You can see that although we cleaned our data, there still seem to be some outliers. 
+# Other than that, our distribution doesn't look as horribly skewed as RT data tend to look sometimes, which is nice.
+# To make them even less skewed, we can log-transform them.
+df_data_clean$log_reaction_time <- log(df_data_clean$reaction_time)
+
+# Have a look at the log-transformed data:
+subset_v  = subset(df_data_clean, condition == "V")$log_reaction_time
+subset_a  = subset(df_data_clean, condition == "A")$log_reaction_time
+subset_va = subset(df_data_clean, condition == "VA")$log_reaction_time
+# Density plots:
+
+plot(density(subset_v),   # data for condition V
+     ylim = c(0, 3),      # set y-axis limits for plot
+     xlim = c(4.5, 7),    # set x-axis limits for plot
+     col = "indianred4")  # set colour for condition V
+lines(density(subset_a),  # data for condition A
+      col = "indianred3") # set colour for condition A
+lines(density(subset_va), # data for condition VA
+      col = "seagreen")   # set colour for condition VA
+
+# QQ-plots again:
+qqnorm(subset_va)
+qqline(subset_va)
+
+qqnorm(subset_a)
+qqline(subset_a)
+
+qqnorm(subset_v)
+qqline(subset_v) 
+# --> there are some outliers in V, but the other ones look okayish
+
+# An even nicer transformation for skewed data is a squared POMS transformation 
+# where you z-transform your data afterwards. This also makes data cleaning a breeze 
+# because you can exclude all values with a z-score of > -2 or > 2.
+# This is a biiiit too much for this small intro course, but check out 
+# this paper if you ever work with skewed data: https://doi.org/10.3389/fpsyg.2021.675558
+
+###################
+
 # 3. descriptive stats
 
-# Now we perform summary stats for the descriptive part of your paper:
+# Now we perform summary stats for the descriptive part of your paper.
+# I know that the distributions are more or less normal, so we can use mean & SDs here.
 
-# 3.1 Get median RT of RTs for each participant in each 
+# 3.1 Get mean RT of RTs for each participant in each 
 # of the 3 conditions (A, V and VA):
 
 # aggregate data:
 
-agg_data = aggregate(df_data_clean$reaction_time,
+agg_data = aggregate(df_data_clean$log_reaction_time,
                      by = list(df_data_clean$participant_ID, 
                                df_data_clean$condition),
-                     FUN = median)
+                     FUN = mean)
 
-SD = aggregate(df_data_clean$reaction_time,
+SD = aggregate(df_data_clean$log_reaction_time,
                      by = list(df_data_clean$participant_ID, 
                                df_data_clean$condition),
                      FUN = sd)$x
@@ -223,12 +295,12 @@ SD = aggregate(df_data_clean$reaction_time,
 agg_data <- as.data.frame(cbind(agg_data, SD))
 
 # name columns:
-names(agg_data) <- c("ID", "condition", "median_RT", "SD")
+names(agg_data) <- c("ID", "condition", "mean_RT", "SD")
 
 
-# 3.2 Get median RT and SD of RTs in each of the 3 conditions (A, V and VA):
+# 3.2 Get mean RT and SD of RTs in each of the 3 conditions (A, V and VA):
 
-# We can use the median RTs in agg_data to compare our groups statistically, 
+# We can use the mean log RTs in agg_data to compare our groups statistically, 
 # but we also need means & sds for each condition aggregated over all participants
 # for a table in our paper, so create another aggregated df:
 
@@ -268,28 +340,29 @@ names(agg_conditions) <- c("Condition", "Mean RT", "SD")
 # this means we don't have normality of distribution 
 # and we have to test non-parametrical.
 
+
 # If we don't get significant results, we can use 
 # parametrical tests (e.g. ANOVAs and t-tests).
-shapiro.test(subset(agg_data, condition == "A")$median_RT)
-# p = 0.9596, so not significant --> maybe normally distributed
+shapiro.test(subset(agg_data, condition == "A")$mean_RT)
+# p = 0.6147, so not significant --> maybe normally distributed
 
-shapiro.test(subset(agg_data, condition == "VA")$median_RT)
-# p = 0.5634, so not significant --> maybe normally distributed
+shapiro.test(subset(agg_data, condition == "VA")$mean_RT)
+# p = 0.06395, so not significant --> maybe normally distributed
 
-shapiro.test(subset(agg_data, condition == "V")$median_RT)
-# p = 0.3818, so not significant --> maybe normally distributed
+shapiro.test(subset(agg_data, condition == "V")$mean_RT)
+# p = 0.1626, so not significant --> maybe normally distributed
 
 # 4.2 Levene Test
 # Normality of distribution is probably given, 
 # so check homogeneity of variance (--> Levene test) and sphericity (Mauchly's test)
-leveneTest(data = agg_data, median_RT ~ as.factor(condition))
-# p = 0.1289, aka not significant --> use parametrical tests
+leveneTest(data = agg_data, mean_RT ~ as.factor(condition))
+# p = 0.223, aka not significant --> use parametrical tests
 
 
 # 4.3 ANOVA
 # Is there a difference between the RTs in A, V and VA?
 ANOVA_res <- ezANOVA(data = agg_data,
-                     dv = median_RT, # dv = dependent variable = AV
+                     dv = mean_RT, # dv = dependent variable = AV
                      wid = ID, # case identifier = ID
                      within = condition) # independent variable = UV
 
@@ -328,14 +401,14 @@ df_results <- as.data.frame(cbind("ANOVA", "A, V & VA", p_val, F_val, df))
 # (use t-tests for dependent groups)
 
 # 4.4.1 Difference between V and VA: Is RT in V > VA?
-ttest_V_VA <- t.test(subset(agg_data, condition == "V")$median_RT, # H1: is > than...
-                     subset(agg_data, condition == "VA")$median_RT, 
+ttest_V_VA <- t.test(subset(agg_data, condition == "V")$mean_RT, # H1: is > than...
+                     subset(agg_data, condition == "VA")$mean_RT, 
                      alternative = "greater",
                      paired = T, # dependent sample, so T
                      exact = F)
 # get results:
 p_val <- round(ttest_V_VA$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.0002847662 aka significant difference here!
+# p-value = 0.00003183519 aka significant difference here!
 F_val <- round(ttest_V_VA$statistic, digits = 3)
 df <- ttest_V_VA$parameter 
 
@@ -344,14 +417,14 @@ df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "V > VA", p_val, F
 
 
 # 4.4.2 Difference between A and VA: Is RT in A > VA?
-ttest_A_VA <- t.test(subset(agg_data, condition == "A")$median_RT, # H1: is > than...
-                     subset(agg_data, condition == "VA")$median_RT, 
+ttest_A_VA <- t.test(subset(agg_data, condition == "A")$mean_RT, # H1: is > than...
+                     subset(agg_data, condition == "VA")$mean_RT, 
                      alternative = "greater",
                      paired = T, # dependent sample, so T
                      exact = F)
 # get results:
 p_val <- round(ttest_A_VA$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.00002211934 aka significant difference here!
+# p-value = 0.0000001732037 aka significant difference here!
 F_val <- round(ttest_A_VA$statistic, digits = 3)
 df <- ttest_A_VA$parameter 
 
@@ -360,14 +433,14 @@ df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > VA", p_val, F
 
 
 # 4.4.3 Difference between A and V: Is RT in A > V?
-ttest_A_V <- t.test(subset(agg_data, condition == "A")$median_RT, # H1: is > than...
-                    subset(agg_data, condition == "V")$median_RT, 
+ttest_A_V <- t.test(subset(agg_data, condition == "A")$mean_RT, # H1: is > than...
+                    subset(agg_data, condition == "V")$mean_RT, 
                     alternative = "greater",
                     paired = T, # dependent sample, so T
                     exact = F)
 # get results:
 p_val <- round(ttest_A_V$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.0003423333 aka significant difference here!
+# p-value = 0.00004451507 aka significant difference here!
 F_val <- round(ttest_A_V$statistic, digits = 3)
 df <- ttest_A_V$parameter 
 
@@ -382,32 +455,32 @@ df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > V", p_val, F_
 # You can use this website to get pretty colors for your plot:
 # https://www.color-hex.com/
 
-my_plot <- ggplot(agg_data, aes(x = condition, 
-                                y = median_RT, 
+(my_plot <- ggplot(agg_data, aes(x = condition, 
+                                y = mean_RT, 
                                 color = condition, 
                                 alpha = 1)) + # alpha = opacity
   # add boxplot:
-  geom_boxplot(width = 0.3, aes(alpha = 0.1)) +
+  geom_boxplot(width = 0.3, aes(alpha = 0.5)) +
   # add scatterplot:
   geom_jitter(aes(alpha = 0.5), 
-              position = position_jitter(0.1), 
+              position = position_jitter(0.05), 
               size = 2) +
   # change axis limits, so the y axis starts at 0:
-  ylim(0, 280) +
+  ylim(5, 6) +
   # rename axis labels
-  ylab(label = "median reaction time (ms)") +
+  ylab(label = "mean log RT") +
   xlab(label = "stimulus condition") +
   # set title
   ggtitle("Hello People! \nLook at me, I'm a plot!") + # you can make a linebreak by using \n
   # set font size for axis labels:
   theme(axis.title.x = element_text(size = 14), 
-        axis.text.x = element_text(size=14),
+        axis.text.x  = element_text(size = 14),
         axis.title.y = element_text(size = 14), 
-        axis.text.y = element_text(size=14),
-        plot.title = element_text(size=20, hjust = 0.5)) +
+        axis.text.y  = element_text(size = 14),
+        plot.title   = element_text(size = 20, hjust = 0.5)) +
   # set colors manually (you can also use pre-made color 
   # palettes, e.g. from the colorbrewer package)
-  scale_color_manual(values =  c("#00b159", "#00aedb", "#ffc425")) +
+  scale_color_manual(values =  c("indianred3", "indianred4", "seagreen")) +
   # turn off legend:
   theme(legend.position = "none") + 
   # turn off lines and grey background color, 
@@ -415,10 +488,8 @@ my_plot <- ggplot(agg_data, aes(x = condition,
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.background = element_blank(), 
-        axis.line = element_line(colour = "black")) 
+        axis.line = element_line(colour = "black")) )
 
-# View plot
-my_plot
 
 # This is just an example, you can build more 
 # or less anything you want in ggplot2. 
