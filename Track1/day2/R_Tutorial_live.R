@@ -57,6 +57,9 @@ for (pkg in pkgs){
 
 rm(pkg, pkgs) # clean up helper variables
 
+# We need a function I wrote for normalizing our data:
+source("/Users/merle/Github/SpringSchool2023/Track1/day2/z_sqrt_POMS_func.R")
+
 # ----------------------------------------------------------------
 
 # 2. Load data and do some preprocessing
@@ -234,41 +237,35 @@ lines(density(subset_va), # data for condition VA
       col = "seagreen")   # set colour for condition VA
 
 # You can see that although we cleaned our data, there still seem to be some outliers. 
-# Other than that, our distribution doesn't look as horribly skewed as RT data tend to look sometimes, which is nice.
-# To make them even less skewed, we can log-transform them.
-df_data_clean$log_reaction_time <- log(df_data_clean$reaction_time)
 
-# Have a look at the log-transformed data:
-subset_v  = subset(df_data_clean, condition == "V")$log_reaction_time
-subset_a  = subset(df_data_clean, condition == "A")$log_reaction_time
-subset_va = subset(df_data_clean, condition == "VA")$log_reaction_time
+# Other than that, our distribution doesn't look as horribly 
+# skewed as RT data tend to look sometimes, which is nice.
+
+# To make our RTs even less skewed, we can transform them by computing the square-root of the 
+# POMS-transformation of our data & z-transforming them afterwards. 
+# Sounds awful but I wrote a function for you. 
+# It's based on this paper: https://doi.org/10.3389/fpsyg.2021.675558
+df_data_clean$transf_reaction_time <- z_sqrt_POMS(vector = df_data_clean$reaction_time, sample_min = 0)
+
+# z-transform data
+subset_v  = subset(df_data_clean, condition == "V")$transf_reaction_time
+subset_a  = subset(df_data_clean, condition == "A")$transf_reaction_time
+subset_va = subset(df_data_clean, condition == "VA")$transf_reaction_time
+
+# we can now exclude all values that are > 2 or < -2:
+df_data_clean <- subset(df_data_clean, transf_reaction_time < 2 & transf_reaction_time > -2)
+
+
 # Density plots:
-
 plot(density(subset_v),   # data for condition V
-     ylim = c(0, 3),      # set y-axis limits for plot
-     xlim = c(4.5, 7),    # set x-axis limits for plot
+     ylim = c(0, 0.8),    # set y-axis limits for plot
+     xlim = c(-2, 2),     # set x-axis limits for plot
      col = "indianred4")  # set colour for condition V
 lines(density(subset_a),  # data for condition A
       col = "indianred3") # set colour for condition A
 lines(density(subset_va), # data for condition VA
       col = "seagreen")   # set colour for condition VA
 
-# QQ-plots again:
-qqnorm(subset_va)
-qqline(subset_va)
-
-qqnorm(subset_a)
-qqline(subset_a)
-
-qqnorm(subset_v)
-qqline(subset_v) 
-# --> there are some outliers in V, but the other ones look okayish
-
-# An even nicer transformation for skewed data is a squared POMS transformation 
-# where you z-transform your data afterwards. This also makes data cleaning a breeze 
-# because you can exclude all values with a z-score of > -2 or > 2.
-# This is a biiiit too much for this small intro course, but check out 
-# this paper if you ever work with skewed data: https://doi.org/10.3389/fpsyg.2021.675558
 
 ###################
 
@@ -282,15 +279,15 @@ qqline(subset_v)
 
 # aggregate data:
 
-agg_data = aggregate(df_data_clean$log_reaction_time,
-                     by = list(df_data_clean$participant_ID, 
-                               df_data_clean$condition),
-                     FUN = mean)
+agg_data <- aggregate(df_data_clean$transf_reaction_time,
+                      by = list(df_data_clean$participant_ID, 
+                                df_data_clean$condition),
+                      FUN = mean)
 
-SD = aggregate(df_data_clean$log_reaction_time,
-                     by = list(df_data_clean$participant_ID, 
-                               df_data_clean$condition),
-                     FUN = sd)$x
+SD <- aggregate(df_data_clean$transf_reaction_time,
+                by = list(df_data_clean$participant_ID, 
+                          df_data_clean$condition),
+                FUN = sd)$V1
 # bind them together
 agg_data <- as.data.frame(cbind(agg_data, SD))
 
@@ -340,25 +337,37 @@ names(agg_conditions) <- c("Condition", "Mean RT", "SD")
 # this means we don't have normality of distribution 
 # and we have to test non-parametrically.
 
-# Careful, normally you wouldn't test anything with such a small sample.
+# Careful, normally you wouldn't test anything with such a small sample size.
+
+
+
+
+
+
+# Add non-parametrical tests?
+
+
+
+
 
 
 # If we don't get significant results, we can use 
 # parametrical tests (e.g. ANOVAs and t-tests).
 shapiro.test(subset(agg_data, condition == "A")$mean_RT)
-# p = 0.6147, so not significant --> maybe normally distributed
+# p = 0.2557, so not significant --> maybe normally distributed
 
 shapiro.test(subset(agg_data, condition == "VA")$mean_RT)
-# p = 0.06395, so not significant --> maybe normally distributed
+# p = 0.3439, so not significant --> maybe normally distributed
 
 shapiro.test(subset(agg_data, condition == "V")$mean_RT)
-# p = 0.1626, so not significant --> maybe normally distributed
+# p = 0.03832, so significant --> maybe normally distributed
+
 
 # 4.2 Levene Test
 # Normality of distribution is probably given, 
 # so check homogeneity of variance (--> Levene test) and sphericity (Mauchly's test)
 leveneTest(data = agg_data, mean_RT ~ as.factor(condition))
-# p = 0.223, aka not significant --> use parametrical tests
+# p = 0.5679, aka not significant --> use parametrical tests
 
 
 # 4.3 ANOVA
@@ -468,9 +477,9 @@ df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > V", p_val, F_
               position = position_jitter(0.05), 
               size = 2) +
   # change axis limits, so the y axis starts at 0:
-  ylim(5, 6) +
+  ylim(-2, 2) +
   # rename axis labels
-  ylab(label = "mean log RT") +
+  ylab(label = "mean RT (z of sqrt(POMS (x)) )") +
   xlab(label = "stimulus condition") +
   # set title
   ggtitle("Hello People! \nLook at me, I'm a plot!") + # you can make a linebreak by using \n
