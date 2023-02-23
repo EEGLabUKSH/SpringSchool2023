@@ -57,9 +57,6 @@ for (pkg in pkgs){
 
 rm(pkg, pkgs) # clean up helper variables
 
-# We need a function I wrote for normalizing our data:
-source("/Users/merle/Github/SpringSchool2023/Track1/day2/z_sqrt_POMS_func.R")
-#source("../z_sqrt_POMS_func.R")
 
 # ----------------------------------------------------------------
 
@@ -73,7 +70,9 @@ setwd('/Users/merle/Github/SpringSchool2023/Track1/day2/RSE_data')
 # --> Have an eye on this if you're a Windows user!
 
 # 2.2 Get the list of files in the directory
-file_list <- list.files(pattern='.csv')
+file_list <- list.files(pattern='.csv') 
+# Hint: if you want to set a path to a folder here, use the argument path = " your_path "
+
 
 # 2.3 Loop through files to read in data
 
@@ -515,10 +514,15 @@ df <- ttest_A_V$parameter
 # add to results df! 
 df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > V", p_val, F_val, df)))
 
-# Now we want to plot our results so the world can see all this glory.
+# ----------------------------------------------------------------
+# save preprocessed data & results df as csv:
+
+write.csv(df_results, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/df_results.csv")
+write.csv(agg_data, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/preprocessed_aggregated_data.csv")
 
 # ----------------------------------------------------------------
 # 5. Plots
+# Now we want to plot our results so the world can see all this glory.
 
 # You can use this website to get pretty colors for your plot:
 # https://www.color-hex.com/
