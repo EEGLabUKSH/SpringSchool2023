@@ -112,9 +112,8 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   }
   
   # We could also use multiple conditions to exclude people. 
-  # For example, we could play old white men in academia & 
-  # exclude all people who are female or non-binary:
-  #if (gender == "female" | gender == "nb") { 
+  # For example, we could exclude all people who are female or aged 60 & over:
+  #if (gender == "female" | age >= 60) { 
   #  exclude_participant <- T
   #} else {
   #  exclude_participant <- F
