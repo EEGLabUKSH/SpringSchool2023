@@ -3,6 +3,7 @@
 # Merle Schuckart (merle.schuckart@gmx.de)
 
 # ----------------------------------------------------------------
+
 # Description of this script:
 
 # This script will walk you through a very simple 
@@ -74,35 +75,35 @@ file_list <- list.files(pattern='.csv')
 # Hint: if you want to set a path to a folder here, use the argument path = " your_path "
 
 
-# 2.3 Loop through files to read in data
+# Loop through files to read in data
 
-# 2.3.1
+# 2.3
 # Create empty dataframes as placeholder for 
 # the df where you collect all our data & 
 # one for the demographic information
 df_data         <- data.frame() 
 df_demographics <- data.frame()
 
-# 2.3.2 loop datasets aka participants:
+# 2.4 loop datasets aka participants:
 for (i in 1:length(file_list)) { # for the number of files in our directory...
   
-  # 2.3.2.1 Get dataframe for one participant
+  # 2.5 Get dataframe for one participant
   subj_df <- read.csv(file_list[i], sep = ",")
 
   # Find out in which row we have to look for the demographics:
   row_demogr <- which(subj_df$sender == "Hello") # find the row where sender is Hello
   
-  # 2.3.2.2 Get participant id (in our case: Name)
+  # 2.6 Get participant id (in our case: Name)
   # --> Don't forget the comma in the bracket!
   id <- subj_df[row_demogr, ]$id # get value where column name is "code" and row name is Demographics
   
-  # 2.3.2.3 Get age 
+  # 2.7 Get age 
   age <- subj_df[row_demogr, ]$age # get value where column name is "age" and row name is Demographics
   
-  # 2.3.2.4 Get gender (even shorter!)
+  # 2.8 Get gender (even shorter!)
   gender <- subj_df[row_demogr, ]$gender
 
-  # 2.3.2.6 If person is a minor, the data should be 
+  # 2.9 If person is a minor, the data should be 
   # excluded from further analysis.
   # For now, we just mark them so we can exclude them later
   if (age < 18) { 
@@ -121,8 +122,9 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
  
   # But we don't do that here. :-)
   
+  # ----------------------------------------------------------------
   
-  # 2.3.2.7 Now get data (Reaction times (= RTs) and condition names):
+  # 2.10 Now get data (Reaction times (= RTs) and condition names):
   
   # get position of column with reaction times (durations) and condition names
   col_cond <- which(names(subj_df) == "condition")
@@ -141,7 +143,7 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   # "duration" as in the original csv file, so we rename it:
   names(RT_data) <- c("condition", "reaction_time")
   
-  # exclude all trials in which the reaction time is either 
+  # 2.11 Exclude all trials in which the reaction time is either 
   # too short (< 100 ms) or too long (> 500 ms, this is an arbitrary value btw).
   # If the participant didn't react, the RT is about 1500 ms, 
   # so we kick non-reactions out as well with these criteria.
@@ -159,7 +161,9 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
     exclude_participant <- T
   }
   
-  # 2.3.2.8 Create 2 dfs: 
+  # ----------------------------------------------------------------
+  
+  # 2.12 Create 2 dfs: 
   # One with demographic information & number of excluded trials, 
   # one with the RT-data, conditions and IDs.
   
@@ -186,7 +190,7 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   
 } # END loop files in directory  
 
-# 2.3.3 clean up a bit: 
+# 2.13 clean up a bit: 
 # remove everything from environment except for the things we still need
 #rm(list = setdiff(ls(), c("df_data", "df_demographics")))
 
@@ -194,9 +198,12 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
 #View(df_data)
 #View(df_demographics)
 
+# ----------------------------------------------------------------
 
+# 3. Preprocessing
 
-# 2.3.4 Now exclude all participants who were marked before as to be excluded.
+# 3.1 Exclude all participants who were marked before as to be excluded.
+
 # Find out in which rows we set "exclude_participant" to TRUE:
 pos_excl <- which(df_demographics$exclude_participant == T)
 # get the IDs from those rows - those are the 
@@ -220,8 +227,7 @@ unique(df_data_clean$participant_ID)
 
 # ----------------------------------------------------------------
 
-# Before working with your data, 
-# have a look at the distributions of the data in our 3 conditions:
+# 3.2 Check distribution of our raw data
 
 # get subset of data for each condition:
 subset_v  = subset(df_data_clean, condition == "V")$reaction_time
@@ -239,12 +245,12 @@ lines(density(subset_va), # data for condition VA
       col = "seagreen")   # set colour for condition VA
 
 # If you have skewed data, you have 3 options: 
-#   1. trying to transform them to get a more symmetrical shape
-# [ 2. resampling your data to get a normal distribution (a bit too complicated for this R intro course) ]
-#   3. using non-parametrical tests
+#   (a) trying to transform them to get a more symmetrical shape
+# [ (b) resampling your data to get a normal distribution (a bit too complicated for this R intro course) ]
+#   (c) using non-parametrical tests later
 
 
-# 1. Transforming your data:
+# (a) Transforming your data:
 
 # Sometimes our data don't have a perfectly symmetrical bell shape (and by sometimes I mean always). 
 # This can be a bit tricky because a lot of statistical tests assume that our data have a normal distribution.
@@ -292,12 +298,15 @@ lines(density(subset_va_log), # data for condition VA
 # There are other transformations that you can also use of course, 
 # I prefer the z(sqrt(POMS(x))) transformation (see Berger & Kiefer, 2021).
 # https://doi.org/10.3389/fpsyg.2021.675558
+# You can also try rank-transforming your data using the rank() function
+# if they are not normally distributed. 
 
 # We will keep our log-transformed data for now because it's 
 # a widely-used and easy-to-do transformation.
 
+# ----------------------------------------------------------------
 
-########## Excluding outliers ##########
+# 3.3 Excluding outliers
 
 # When cleaning your data, you can remove outlier-trials for the whole sample, 
 # for each group or each participant in each group.
@@ -305,7 +314,7 @@ lines(density(subset_va_log), # data for condition VA
 # in each group for example) & exclude participants whose data deviate too much from the mean of your sample.
 # What you do & which criteria you choose is completely up to you.
 
-#### Removing outliers on participant x group level ####
+# 3.3.1 Removing outliers on participant x group level
 
 # append column to df_data_clean that contains only FALSEs
 # if a trial is an outlier, we will mark it as TRUE here
@@ -347,30 +356,25 @@ for (id in ids){
 df_data_clean <- subset(df_data_clean, excl_trial == FALSE)
 
 
-# Now we excluded trials, but what about participants who have completely 
+# 3.3.2 Exclude participants 
+# We already excluded single trials, but what about participants who have completely 
 # different RTs than the rest of the sample?
 # Solution: exclude those, too.
-
-#### Aggregate data and remove datasets of participants who deviate too much from the sample mean ####
-
-agg_data <- aggregate(df_data_clean$log_RT, # which variable do you want to get means for?
-                      by = list(df_data_clean$participant_ID, # grouping factors: group by person & condition
-                                df_data_clean$condition),
-                      FUN = mean) # compute means
-
-# assign nicer column names
-names(agg_data) <- c("ID", "Condition", "Mean_log_RT")
-
-# Find out if there are participants whose mean RTs are > M + 2*SD or < M - 2*SD
-# with M being the mean of all participants' means in one of the conditions and SD being the sample SD.
 
 # You can do this more or less exactly like we did with the single trials.
 # I checked and there's no outlier participant, so I'll skip this step here (lucky you).
 
+# steps you would have to take to do this:
 
-###################
+# - Aggregate data and remove datasets of participants who deviate too much from the sample mean 
+# - Find out if there are participants whose mean RTs are > M + 2*SD or < M - 2*SD
+#   with M being the mean of all participants' means in one of the conditions and SD being the sample SD.
+# - kick out participants who are outliers
 
-# 3. descriptive stats
+
+# ----------------------------------------------------------------
+
+# 4. Descriptive Stats
 
 # aggregate the data again, but this time aggregate over participants:
 
@@ -388,53 +392,65 @@ names(agg_data_all) <- c("Condition", "Mean_log_RT")
 # Looks good!
 # View(agg_data_all)
 
+# You can also make some more plots here but let's skip that part.
+
 # ----------------------------------------------------------------
-# 4. inferential stats 
 
-# Hint: 
-# We always use an alpha level of 5%,
-# so if we get p-values of <= 0.05, our test was significant! Yikes.
+# 5. Inferential Stats 
 
-# 4.1 Shapiro-Wilk Test
-# We have a super small sample, but we 
-# test the distribution anyway so you know how to do it:
-# Compute Kolmogorov-Smirnov-Lilliefors-Test for normality of distribution 
+# 5.1 Shapiro-Wilk Test
+# We have a super small sample, but we test the distribution here anyway so you know how to do it:
+
+# Compute Shapiro-Wilk-test for normality of distribution. 
 # If we get a significant result for one of the groups, 
-# this means we don't have normality of distribution 
-# and we have to test non-parametrically.
-# Careful, normally you wouldn't test anything with such a small sample size.
+# this means we don't have normality of distribution and we have to test 
+# non-parametrically (either by rank-transforming our data or using non-parametrical tests).
+# If we don't get a significant result, though, this means we couldn't show that our distribution 
+# is NOT non-normally distributed. This doesn't mean it's normally distributed, but in practice we assume it does.
+
+# (Careful here btw, normally you wouldn't test anything with such a small sample size.)
 
 # If we don't get significant results, we can use 
 # parametrical tests (e.g. ANOVAs and t-tests).
 shapiro.test(subset(agg_data, Condition == "A")$Mean_log_RT)
-# p = 0.6896, so not significant --> maybe normally distributed
+# p = 0.6896, so not significant on 5% alpha level --> maybe normally distributed
 
 shapiro.test(subset(agg_data, Condition == "VA")$Mean_log_RT)
-# p = 0.4906, so not significant --> maybe normally distributed
+# p = 0.4906, so not significant on 5% alpha level --> maybe normally distributed
 
 shapiro.test(subset(agg_data, Condition == "V")$Mean_log_RT)
-# p = 0.9087, so significant --> maybe normally distributed
+# p = 0.9087, so significant on 5% alpha level --> maybe normally distributed
 
-# --> All tests are significant, so we can use parametrical tests.
+# --> All tests are significant on a 5% alpha level, so we can use parametrical tests.
 
 
-# 4.2 Levene Test
+# 5.2 Levene Test
 # Normality of distribution is probably given (at least that's what the Shapiro-Wilk tests hint to), 
-# so check homogeneity of variance (--> Levene test) and sphericity (Mauchly's test)
+# so check homogeneity of variance (--> Levene test) and sphericity (Mauchly's test).
+# First the leve test: It checks whether your variances don't differ between your groups.
+# If this test is significant, your variances differ between the groups. 
 leveneTest(data = agg_data, Mean_log_RT ~ as.factor(Condition))
-# p = 0.6901, aka not significant --> use parametrical tests
+# p = 0.6901, aka not significant on a 5% alpha level --> use parametrical tests
+
+# I know I said we'll compute the Mauchly test, but we'll do that together with the ANOVA:
 
 
-# 4.3 ANOVA
+# 5.3 ANOVA
 # Is there a difference between the RTs in A, V and VA?
-ANOVA_res <- ezANOVA(data = agg_data,
-                     dv = Mean_log_RT, # dv = dependent variable = AV
-                     wid = ID, # case identifier = ID
-                     within = Condition) # independent variable = UV
+ANOVA_res <- ezANOVA(data   = agg_data,    # your dataframe
+                     dv     = Mean_log_RT, # dv = dependent variable = AV
+                     wid    = ID,          # case identifier = ID
+                     within = Condition)   # independent variable = UV
 
 # The ezANOVA function is super useful because it 
 # computes the Mauchly test (--> test for sphericity) 
-# for us as well. If the Mauchly test is significant, 
+# for us as well. 
+
+# To test whether you have sphericity in your data, you compute the differences between the 
+# values in your groups and then you run something like the Levene test 
+# where you check whether the variances of your differences are equal.
+
+# If the Mauchly test is significant, 
 # we need to use a Greenhouse-Geisser corrected p-value.
 # Don't worry about this, the ezANOVA gives us 
 # corrected p-value as well, so we only have to check if we need 
@@ -462,8 +478,38 @@ df_results <- as.data.frame(cbind("ANOVA", "A, V & VA", p_val, F_val, df))
 # Our ANOVA was significant, so we can now use post-hoc t-tests to 
 # find out which groups are significantly different.
 
+# --------------
 
-# 4.4 Post-hoc tests! 
+# Quick stats explanation concerning the values we compute here: 
+
+# degrees of freedom tell you how many independent pieces of information you had to do your calculations.
+#   In a test where you only compare 2 conditions (a t-test for example), your df = sample size - 1
+#   In a test with more groups, like our ANOVA, you have 2 dfs, 
+#   with df1 being number of groups - 1 and 
+#   df2 being number of all observations across groups - number of groups.
+
+# The test statistic (F in ANOVAs, t in t-tests, W in Wilcox tests,...) tells you 
+#   how different your actual distribution is from a distribution where your groups don't differ. 
+#   So it basically tells you how closely your data match a distribution you would expect if the H0 was true. 
+#   The larger the value, the larger the difference between your data and the H0. 
+#   That's why for a test statistic that exceeds a certain cutoff value, you assume your groups differ significantly.
+#   To calculate the test statistic, you divide the similarity of your groups (e.g. difference between means) 
+#   by how much your data vary (e.g. standard deviation).
+
+# The p-value just tells you whether your groups are significantly different. 
+#   p <= alpha means your groups are significantly different, with alpha being 
+#   the level of significance (almost always 0.05 = 5%). If you compare multiple groups with each other, 
+#   you have to correct the p-value up a bit, for example by multiplying 
+#   it with the number of tests you ran on the same data (Bonferroni correction).
+
+# We need all these values if we want to report our results somewhere, 
+# that's why we collect them in a df here.
+
+
+# ----------------------------------------------------------------
+
+
+# 5.4 Post-hoc tests! 
 # (use t-tests for dependent groups)
 
 # 4.4.1 Difference between V and VA: Is RT in V > VA?
@@ -513,14 +559,17 @@ df <- ttest_A_V$parameter
 # add to results df! 
 df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > V", p_val, F_val, df)))
 
+
 # ----------------------------------------------------------------
-# save preprocessed data & results df as csv:
+
+# 6. save preprocessed data & results df as csv:
 
 write.csv(df_results, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/df_results.csv")
 write.csv(agg_data, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/preprocessed_aggregated_data.csv")
 
 # ----------------------------------------------------------------
-# 5. Plots
+
+# 7. Plots
 # Now we want to plot our results so the world can see all this glory.
 
 # You can use this website to get pretty colors for your plot:
