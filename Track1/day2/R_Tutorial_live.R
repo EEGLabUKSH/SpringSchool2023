@@ -603,3 +603,4 @@ pirateplot(formula = Mean_log_RT ~ Condition, # plot RTs by condition
 # The easystats package also has really nice plots if you're working with LMMs. :-)
 
 
+
