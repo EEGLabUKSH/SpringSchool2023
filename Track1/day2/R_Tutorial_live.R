@@ -3,6 +3,7 @@
 # Merle Schuckart (merle.schuckart@gmx.de)
 
 # ----------------------------------------------------------------
+
 # Description of this script:
 
 # This script will walk you through a very simple 
@@ -41,10 +42,10 @@ options(scipen = 999)
 remove(list = ls())
 
 # create a list with needed libraries
-pkgs <- c("ggplot2", # for plots
+pkgs <- c("yarrr",   # for plots
           "lattice", # for ugly but fast density plots
-          "car", # for Shapiro-Wilk-Test
-          "ez") # for ANOVA
+          "car",     # for Shapiro-Wilk-Test
+          "ez")      # for ANOVA
 
 # load each listed library, check if it's already installed 
 # and install if necessary
@@ -57,8 +58,6 @@ for (pkg in pkgs){
 
 rm(pkg, pkgs) # clean up helper variables
 
-# We need a function I wrote for normalizing our data:
-source("/Users/merle/Github/SpringSchool2023/Track1/day2/z_sqrt_POMS_func.R")
 
 # ----------------------------------------------------------------
 
@@ -72,37 +71,39 @@ setwd('/Users/merle/Github/SpringSchool2023/Track1/day2/RSE_data')
 # --> Have an eye on this if you're a Windows user!
 
 # 2.2 Get the list of files in the directory
-file_list <- list.files(pattern='.csv')
+file_list <- list.files(pattern='.csv') 
+# Hint: if you want to set a path to a folder here, use the argument path = " your_path "
 
-# 2.3 Loop through files to read in data
 
-# 2.3.1
+# Loop through files to read in data
+
+# 2.3
 # Create empty dataframes as placeholder for 
 # the df where you collect all our data & 
 # one for the demographic information
 df_data         <- data.frame() 
 df_demographics <- data.frame()
 
-# 2.3.2 loop datasets aka participants:
+# 2.4 loop datasets aka participants:
 for (i in 1:length(file_list)) { # for the number of files in our directory...
   
-  # 2.3.2.1 Get dataframe for one participant
+  # 2.5 Get dataframe for one participant
   subj_df <- read.csv(file_list[i], sep = ",")
 
   # Find out in which row we have to look for the demographics:
   row_demogr <- which(subj_df$sender == "Hello") # find the row where sender is Hello
   
-  # 2.3.2.2 Get participant id (in our case: Name)
+  # 2.6 Get participant id (in our case: Name)
   # --> Don't forget the comma in the bracket!
   id <- subj_df[row_demogr, ]$id # get value where column name is "code" and row name is Demographics
   
-  # 2.3.2.3 Get age 
+  # 2.7 Get age 
   age <- subj_df[row_demogr, ]$age # get value where column name is "age" and row name is Demographics
   
-  # 2.3.2.4 Get gender (even shorter!)
+  # 2.8 Get gender (even shorter!)
   gender <- subj_df[row_demogr, ]$gender
 
-  # 2.3.2.6 If person is a minor, the data should be 
+  # 2.9 If person is a minor, the data should be 
   # excluded from further analysis.
   # For now, we just mark them so we can exclude them later
   if (age < 18) { 
@@ -112,9 +113,8 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   }
   
   # We could also use multiple conditions to exclude people. 
-  # For example, we could play old white men in academia & 
-  # exclude all people who are female or non-binary:
-  #if (gender == "female" | gender == "nb") { 
+  # For example, we could exclude all people who are female or aged 60 & over:
+  #if (gender == "female" | age >= 60) { 
   #  exclude_participant <- T
   #} else {
   #  exclude_participant <- F
@@ -122,8 +122,9 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
  
   # But we don't do that here. :-)
   
+  # ----------------------------------------------------------------
   
-  # 2.3.2.7 Now get data (Reaction times (= RTs) and condition names):
+  # 2.10 Now get data (Reaction times (= RTs) and condition names):
   
   # get position of column with reaction times (durations) and condition names
   col_cond <- which(names(subj_df) == "condition")
@@ -142,7 +143,7 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   # "duration" as in the original csv file, so we rename it:
   names(RT_data) <- c("condition", "reaction_time")
   
-  # exclude all trials in which the reaction time is either 
+  # 2.11 Exclude all trials in which the reaction time is either 
   # too short (< 100 ms) or too long (> 500 ms, this is an arbitrary value btw).
   # If the participant didn't react, the RT is about 1500 ms, 
   # so we kick non-reactions out as well with these criteria.
@@ -160,7 +161,9 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
     exclude_participant <- T
   }
   
-  # 2.3.2.8 Create 2 dfs: 
+  # ----------------------------------------------------------------
+  
+  # 2.12 Create 2 dfs: 
   # One with demographic information & number of excluded trials, 
   # one with the RT-data, conditions and IDs.
   
@@ -187,7 +190,7 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
   
 } # END loop files in directory  
 
-# 2.3.3 clean up a bit: 
+# 2.13 clean up a bit: 
 # remove everything from environment except for the things we still need
 #rm(list = setdiff(ls(), c("df_data", "df_demographics")))
 
@@ -195,8 +198,12 @@ for (i in 1:length(file_list)) { # for the number of files in our directory...
 #View(df_data)
 #View(df_demographics)
 
+# ----------------------------------------------------------------
 
-# 2.3.4 Now exclude all participants who were marked before as to be excluded.
+# 3. Preprocessing
+
+# 3.1 Exclude all participants who were marked before as to be excluded.
+
 # Find out in which rows we set "exclude_participant" to TRUE:
 pos_excl <- which(df_demographics$exclude_participant == T)
 # get the IDs from those rows - those are the 
@@ -220,166 +227,230 @@ unique(df_data_clean$participant_ID)
 
 # ----------------------------------------------------------------
 
-# Before doing anything, have a look at the data:
+# 3.2 Check distribution of our raw data
 
-# Plot the distribution of our RTs in all 3 conditions:
+# get subset of data for each condition:
 subset_v  = subset(df_data_clean, condition == "V")$reaction_time
 subset_a  = subset(df_data_clean, condition == "A")$reaction_time
 subset_va = subset(df_data_clean, condition == "VA")$reaction_time
 
+# plot dstributions as density plots:
 plot(density(subset_v),   # data for condition V
      ylim = c(0, 0.015),  # set y-axis limits for plot
-     xlim = c(0, 700),    # set x-axis limits for plot
+     xlim = c(0, 400),    # set x-axis limits for plot
      col = "indianred4")  # set colour for condition V
 lines(density(subset_a),  # data for condition A
       col = "indianred3") # set colour for condition A
 lines(density(subset_va), # data for condition VA
       col = "seagreen")   # set colour for condition VA
 
-# You can see that although we cleaned our data, there still seem to be some outliers. 
-
-# Other than that, our distribution doesn't look as horribly 
-# skewed as RT data tend to look sometimes, which is nice.
-
-# To make our RTs even less skewed, we can transform them by computing the square-root of the 
-# POMS-transformation of our data & z-transforming them afterwards. 
-# Sounds awful but I wrote a function for you. 
-# It's based on this paper: https://doi.org/10.3389/fpsyg.2021.675558
-df_data_clean$transf_reaction_time <- z_sqrt_POMS(vector = df_data_clean$reaction_time, sample_min = 0)
-
-# z-transform data
-subset_v  = subset(df_data_clean, condition == "V")$transf_reaction_time
-subset_a  = subset(df_data_clean, condition == "A")$transf_reaction_time
-subset_va = subset(df_data_clean, condition == "VA")$transf_reaction_time
-
-# we can now exclude all values that are > 2 or < -2:
-df_data_clean <- subset(df_data_clean, transf_reaction_time < 2 & transf_reaction_time > -2)
+# If you have skewed data, you have 3 options: 
+#   (a) trying to transform them to get a more symmetrical shape
+# [ (b) resampling your data to get a normal distribution (a bit too complicated for this R intro course) ]
+#   (c) using non-parametrical tests later
 
 
-# Density plots:
-plot(density(subset_v),   # data for condition V
-     ylim = c(0, 0.8),    # set y-axis limits for plot
-     xlim = c(-2, 2),     # set x-axis limits for plot
-     col = "indianred4")  # set colour for condition V
-lines(density(subset_a),  # data for condition A
-      col = "indianred3") # set colour for condition A
-lines(density(subset_va), # data for condition VA
-      col = "seagreen")   # set colour for condition VA
+# (a) Transforming your data:
+
+# Sometimes our data don't have a perfectly symmetrical bell shape (and by sometimes I mean always). 
+# This can be a bit tricky because a lot of statistical tests assume that our data have a normal distribution.
+
+# If the distribution looks like it leans to the left (i.e. it has a tail on the right), 
+# it's positively skewed. RT data look like this.
+# If it leans to the right (i.e. it has a tail on the left), 
+# we have negatively skewed data.
+
+# For positively skewed data like our RTs, a lot of people use a sqrt- or a log-transformation.
+# When log-transforming your data, you take the logarithm of each value.
+# Log-transforming basically shrinks large values more than smaller values.
+# compare these values for example:
+#log(200)
+#log(20)
+#log(2)
+
+# The sqrt-transform does the same, just not as extreme as the log-transformation.
+#sqrt(200)
+#sqrt(20)
+#sqrt(2)
+
+# In both cases this means that if we have a long right tail (aka a lot of smaller values and some large outliers), 
+# the outliers get "pulled" to the left side a bit which makes the distribution look more bell-shaped.
+# While this can be nice, this can also cause problems if you make your outliers match your distribution more.
+
+# Just to show you how we would transform our data:
+# log-transform data:
+df_data_clean$log_RTs <- log(df_data_clean$reaction_time)
+
+# get groups
+subset_v_log  = subset(df_data_clean, condition == "V")$log_RTs
+subset_a_log  = subset(df_data_clean, condition == "A")$log_RTs
+subset_va_log = subset(df_data_clean, condition == "VA")$log_RTs
+
+# plot them:
+plot(density(subset_v_log),   # data for condition V
+     col = "indianred4")      # set colour for condition V
+lines(density(subset_a_log),  # data for condition A
+      col = "indianred3")     # set colour for condition A
+lines(density(subset_va_log), # data for condition VA
+      col = "seagreen")       # set colour for condition VA
 
 
-###################
+# There are other transformations that you can also use of course, 
+# I prefer the z(sqrt(POMS(x))) transformation (see Berger & Kiefer, 2021).
+# https://doi.org/10.3389/fpsyg.2021.675558
+# You can also try rank-transforming your data using the rank() function
+# if they are not normally distributed. 
 
-# 3. descriptive stats
-
-# Now we perform summary stats for the descriptive part of your paper.
-# I know that the distributions are more or less normal, so we can use mean & SDs here.
-
-# 3.1 Get mean RT of RTs for each participant in each 
-# of the 3 conditions (A, V and VA):
-
-# aggregate data:
-
-agg_data <- aggregate(df_data_clean$transf_reaction_time,
-                      by = list(df_data_clean$participant_ID, 
-                                df_data_clean$condition),
-                      FUN = mean)
-
-SD <- aggregate(df_data_clean$transf_reaction_time,
-                by = list(df_data_clean$participant_ID, 
-                          df_data_clean$condition),
-                FUN = sd)$V1
-# bind them together
-agg_data <- as.data.frame(cbind(agg_data, SD))
-
-# name columns:
-names(agg_data) <- c("ID", "condition", "mean_RT", "SD")
-
-
-# 3.2 Get mean RT and SD of RTs in each of the 3 conditions (A, V and VA):
-
-# We can use the mean log RTs in agg_data to compare our groups statistically, 
-# but we also need means & sds for each condition aggregated over all participants
-# for a table in our paper, so create another aggregated df:
-
-# aggregate data:
-agg_conditions = aggregate(df_data_clean$reaction_time,
-                           by = list(df_data_clean$condition),
-                           FUN = mean)
-
-# get SD as well:
-SD = aggregate(df_data_clean$reaction_time,
-               by = list(df_data_clean$condition),
-               FUN = sd)$x
-
-# append to agg_conditions as additional column:
-agg_conditions <- as.data.frame(cbind(agg_conditions, SD))
-
-# correct the column names: 
-names(agg_conditions) <- c("Condition", "Mean RT", "SD")
-
-# Have a look: Our hypotheses were that 
-# 1. the RTs in the multisensory condition VA should be a little faster than in A and V 
-# 2. the RTs in V should be faster than in A. 
-# Looks good!
-# View(agg_conditions)
+# We will keep our log-transformed data for now because it's 
+# a widely-used and easy-to-do transformation.
 
 # ----------------------------------------------------------------
-# 4. inferential stats 
 
-# Hint: We always use an alpha level of 5%,
-# so if we get p-values of <= 0.05, our test was significant! Yikes.
+# 3.3 Excluding outliers
 
-# 4.1 Shapiro-Wilk Test
-# We have a super small sample, but we 
-# test the distribution anyway so you know how to do it:
-# Compute Kolmogorov-Smirnov-Lilliefors-Test for normality of distribution 
+# When cleaning your data, you can remove outlier-trials for the whole sample, 
+# for each group or each participant in each group.
+# Afterwards, you can also aggregate your data (i.e. compute mean RTs for each participant 
+# in each group for example) & exclude participants whose data deviate too much from the mean of your sample.
+# What you do & which criteria you choose is completely up to you.
+
+# 3.3.1 Removing outliers on participant x group level
+
+# append column to df_data_clean that contains only FALSEs
+# if a trial is an outlier, we will mark it as TRUE here
+df_data_clean$excl_trial <- FALSE
+
+# create vector containing participant IDs
+ids <- unique(df_data_clean$participant_ID)
+
+# create vector with our condition names
+conds <- c("A", "V", "VA")
+
+# loop participants in ids vector
+for (id in ids){
+  
+  # loop conditions in condition names vector
+  for (cond in conds){
+    
+     # get subset of data with the current condition
+     curr_group <- subset(df_data_clean, condition == cond & id == id)
+
+     # compute group mean & SD
+     # --> Careful, M & SD only makes sense for symmetrical distributions. 
+     # We pretend that ours are symmetrical enough (whatever that means).
+     # plot(density(curr_group$log_RTs))
+     
+     # get mean & SD
+     M  <- mean(curr_group$log_RTs)
+     SD <- sd(curr_group$log_RTs)
+     
+     # mark all trials for exclusion that have a log RT < M - 2 * SD or > M + 2 * SD:
+     outlier_idx <- which(df_data_clean$log_RTs < M - 2 * SD | df_data_clean$log_RTs > M + 2 * SD)
+     df_data_clean[outlier_idx, "excl_trial"] <- TRUE
+     
+  }#END loop conditions
+}#END loop participants
+
+# now actually remove trials marked for exclusion
+# only keep trials that are no outliers:
+df_data_clean <- subset(df_data_clean, excl_trial == FALSE)
+
+
+# 3.3.2 Exclude participants 
+# We already excluded single trials, but what about participants who have completely 
+# different RTs than the rest of the sample?
+# Solution: exclude those, too.
+
+# You can do this more or less exactly like we did with the single trials.
+# I checked and there's no outlier participant, so I'll skip this step here (lucky you).
+
+# steps you would have to take to do this:
+
+# - Aggregate data and remove datasets of participants who deviate too much from the sample mean 
+# - Find out if there are participants whose mean RTs are > M + 2*SD or < M - 2*SD
+#   with M being the mean of all participants' means in one of the conditions and SD being the sample SD.
+# - kick out participants who are outliers
+
+
+# ----------------------------------------------------------------
+
+# 4. Descriptive Stats
+
+# aggregate the data again, but this time aggregate over participants:
+
+agg_data_all <- aggregate(df_data_clean$log_RT, # which variable do you want to get means for?
+                          by = list( df_data_clean$condition), # grouping factors: group only by condition
+                          FUN = mean) # compute means
+
+# assign nicer column names
+names(agg_data_all) <- c("Condition", "Mean_log_RT")
+
+
+# Have a look: Our hypotheses were that 
+# 1. the RTs in the multisensory condition VA should be a little faster than in A and V. 
+# 2. the RTs in V should be faster than in A. 
+# Looks good!
+# View(agg_data_all)
+
+# You can also make some more plots here but let's skip that part.
+
+# ----------------------------------------------------------------
+
+# 5. Inferential Stats 
+
+# 5.1 Shapiro-Wilk Test
+# We have a super small sample, but we test the distribution here anyway so you know how to do it:
+
+# Compute Shapiro-Wilk-test for normality of distribution. 
 # If we get a significant result for one of the groups, 
-# this means we don't have normality of distribution 
-# and we have to test non-parametrically.
+# this means we don't have normality of distribution and we have to test 
+# non-parametrically (either by rank-transforming our data or using non-parametrical tests).
+# If we don't get a significant result, though, this means we couldn't show that our distribution 
+# is NOT non-normally distributed. This doesn't mean it's normally distributed, but in practice we assume it does.
 
-# Careful, normally you wouldn't test anything with such a small sample size.
-
-
-
-
-
-
-# Add non-parametrical tests?
-
-
-
-
-
+# (Careful here btw, normally you wouldn't test anything with such a small sample size.)
 
 # If we don't get significant results, we can use 
 # parametrical tests (e.g. ANOVAs and t-tests).
-shapiro.test(subset(agg_data, condition == "A")$mean_RT)
-# p = 0.2557, so not significant --> maybe normally distributed
+shapiro.test(subset(agg_data, Condition == "A")$Mean_log_RT)
+# p = 0.6896, so not significant on 5% alpha level --> maybe normally distributed
 
-shapiro.test(subset(agg_data, condition == "VA")$mean_RT)
-# p = 0.3439, so not significant --> maybe normally distributed
+shapiro.test(subset(agg_data, Condition == "VA")$Mean_log_RT)
+# p = 0.4906, so not significant on 5% alpha level --> maybe normally distributed
 
-shapiro.test(subset(agg_data, condition == "V")$mean_RT)
-# p = 0.03832, so significant --> maybe normally distributed
+shapiro.test(subset(agg_data, Condition == "V")$Mean_log_RT)
+# p = 0.9087, so significant on 5% alpha level --> maybe normally distributed
 
-
-# 4.2 Levene Test
-# Normality of distribution is probably given, 
-# so check homogeneity of variance (--> Levene test) and sphericity (Mauchly's test)
-leveneTest(data = agg_data, mean_RT ~ as.factor(condition))
-# p = 0.5679, aka not significant --> use parametrical tests
+# --> All tests are significant on a 5% alpha level, so we can use parametrical tests.
 
 
-# 4.3 ANOVA
+# 5.2 Levene Test
+# Normality of distribution is probably given (at least that's what the Shapiro-Wilk tests hint to), 
+# so check homogeneity of variance (--> Levene test) and sphericity (Mauchly's test).
+# First the leve test: It checks whether your variances don't differ between your groups.
+# If this test is significant, your variances differ between the groups. 
+leveneTest(data = agg_data, Mean_log_RT ~ as.factor(Condition))
+# p = 0.6901, aka not significant on a 5% alpha level --> use parametrical tests
+
+# I know I said we'll compute the Mauchly test, but we'll do that together with the ANOVA:
+
+
+# 5.3 ANOVA
 # Is there a difference between the RTs in A, V and VA?
-ANOVA_res <- ezANOVA(data = agg_data,
-                     dv = mean_RT, # dv = dependent variable = AV
-                     wid = ID, # case identifier = ID
-                     within = condition) # independent variable = UV
+ANOVA_res <- ezANOVA(data   = agg_data,    # your dataframe
+                     dv     = Mean_log_RT, # dv = dependent variable = AV
+                     wid    = ID,          # case identifier = ID
+                     within = Condition)   # independent variable = UV
 
 # The ezANOVA function is super useful because it 
 # computes the Mauchly test (--> test for sphericity) 
-# for us as well. If the Mauchly test is significant, 
+# for us as well. 
+
+# To test whether you have sphericity in your data, you compute the differences between the 
+# values in your groups and then you run something like the Levene test 
+# where you check whether the variances of your differences are equal.
+
+# If the Mauchly test is significant, 
 # we need to use a Greenhouse-Geisser corrected p-value.
 # Don't worry about this, the ezANOVA gives us 
 # corrected p-value as well, so we only have to check if we need 
@@ -407,19 +478,49 @@ df_results <- as.data.frame(cbind("ANOVA", "A, V & VA", p_val, F_val, df))
 # Our ANOVA was significant, so we can now use post-hoc t-tests to 
 # find out which groups are significantly different.
 
+# --------------
 
-# 4.4 Post-hoc tests! 
+# Quick stats explanation concerning the values we compute here: 
+
+# degrees of freedom tell you how many independent pieces of information you had to do your calculations.
+#   In a test where you only compare 2 conditions (a t-test for example), your df = sample size - 1
+#   In a test with more groups, like our ANOVA, you have 2 dfs, 
+#   with df1 being number of groups - 1 and 
+#   df2 being number of all observations across groups - number of groups.
+
+# The test statistic (F in ANOVAs, t in t-tests, W in Wilcox tests,...) tells you 
+#   how different your actual distribution is from a distribution where your groups don't differ. 
+#   So it basically tells you how closely your data match a distribution you would expect if the H0 was true. 
+#   The larger the value, the larger the difference between your data and the H0. 
+#   That's why for a test statistic that exceeds a certain cutoff value, you assume your groups differ significantly.
+#   To calculate the test statistic, you divide the similarity of your groups (e.g. difference between means) 
+#   by how much your data vary (e.g. standard deviation).
+
+# The p-value just tells you whether your groups are significantly different. 
+#   p <= alpha means your groups are significantly different, with alpha being 
+#   the level of significance (almost always 0.05 = 5%). If you compare multiple groups with each other, 
+#   you have to correct the p-value up a bit, for example by multiplying 
+#   it with the number of tests you ran on the same data (Bonferroni correction).
+
+# We need all these values if we want to report our results somewhere, 
+# that's why we collect them in a df here.
+
+
+# ----------------------------------------------------------------
+
+
+# 5.4 Post-hoc tests! 
 # (use t-tests for dependent groups)
 
 # 4.4.1 Difference between V and VA: Is RT in V > VA?
-ttest_V_VA <- t.test(subset(agg_data, condition == "V")$mean_RT, # H1: is > than...
-                     subset(agg_data, condition == "VA")$mean_RT, 
+ttest_V_VA <- t.test(subset(agg_data, Condition == "V")$Mean_log_RT, # H1: is > than...
+                     subset(agg_data, Condition == "VA")$Mean_log_RT, 
                      alternative = "greater",
                      paired = T, # dependent sample, so T
                      exact = F)
 # get results:
 p_val <- round(ttest_V_VA$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.00003183519 aka significant difference here!
+# p-value = 0.005 aka significant difference here!
 F_val <- round(ttest_V_VA$statistic, digits = 3)
 df <- ttest_V_VA$parameter 
 
@@ -428,14 +529,14 @@ df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "V > VA", p_val, F
 
 
 # 4.4.2 Difference between A and VA: Is RT in A > VA?
-ttest_A_VA <- t.test(subset(agg_data, condition == "A")$mean_RT, # H1: is > than...
-                     subset(agg_data, condition == "VA")$mean_RT, 
+ttest_A_VA <- t.test(subset(agg_data, Condition == "A")$Mean_log_RT, # H1: is > than...
+                     subset(agg_data, Condition == "VA")$Mean_log_RT, 
                      alternative = "greater",
                      paired = T, # dependent sample, so T
                      exact = F)
 # get results:
 p_val <- round(ttest_A_VA$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.0000001732037 aka significant difference here!
+# p-value = 0.000002408008 aka significant difference here!
 F_val <- round(ttest_A_VA$statistic, digits = 3)
 df <- ttest_A_VA$parameter 
 
@@ -444,68 +545,62 @@ df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > VA", p_val, F
 
 
 # 4.4.3 Difference between A and V: Is RT in A > V?
-ttest_A_V <- t.test(subset(agg_data, condition == "A")$mean_RT, # H1: is > than...
-                    subset(agg_data, condition == "V")$mean_RT, 
+ttest_A_V <- t.test(subset(agg_data, Condition == "A")$Mean_log_RT, # H1: is > than...
+                    subset(agg_data, Condition == "V")$Mean_log_RT, 
                     alternative = "greater",
                     paired = T, # dependent sample, so T
                     exact = F)
 # get results:
 p_val <- round(ttest_A_V$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.00004451507 aka significant difference here!
+# p-value = 0.02275132 aka significant difference here!
 F_val <- round(ttest_A_V$statistic, digits = 3)
 df <- ttest_A_V$parameter 
 
 # add to results df! 
 df_results <- as.data.frame(rbind(df_results, cbind("t-Test", "A > V", p_val, F_val, df)))
 
-# Now we want to plot our results so the world can see all this glory.
 
 # ----------------------------------------------------------------
-# 5. Plots
+
+# 6. save preprocessed data & results df as csv:
+
+write.csv(df_results, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/df_results.csv")
+write.csv(agg_data, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/preprocessed_aggregated_data.csv")
+
+# ----------------------------------------------------------------
+
+# 7. Plots
+# Now we want to plot our results so the world can see all this glory.
 
 # You can use this website to get pretty colors for your plot:
 # https://www.color-hex.com/
 
-(my_plot <- ggplot(agg_data, aes(x = condition, 
-                                y = mean_RT, 
-                                color = condition, 
-                                alpha = 1)) + # alpha = opacity
-  # add boxplot:
-  geom_boxplot(width = 0.3, aes(alpha = 0.5)) +
-  # add scatterplot:
-  geom_jitter(aes(alpha = 0.5), 
-              position = position_jitter(0.05), 
-              size = 2) +
-  # change axis limits, so the y axis starts at 0:
-  ylim(-2, 2) +
-  # rename axis labels
-  ylab(label = "mean RT (z of sqrt(POMS (x)) )") +
-  xlab(label = "stimulus condition") +
-  # set title
-  ggtitle("Hello People! \nLook at me, I'm a plot!") + # you can make a linebreak by using \n
-  # set font size for axis labels:
-  theme(axis.title.x = element_text(size = 14), 
-        axis.text.x  = element_text(size = 14),
-        axis.title.y = element_text(size = 14), 
-        axis.text.y  = element_text(size = 14),
-        plot.title   = element_text(size = 20, hjust = 0.5)) +
-  # set colors manually (you can also use pre-made color 
-  # palettes, e.g. from the colorbrewer package)
-  scale_color_manual(values =  c("indianred3", "indianred4", "seagreen")) +
-  # turn off legend:
-  theme(legend.position = "none") + 
-  # turn off lines and grey background color, 
-  # so the background is white:
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(), 
-        axis.line = element_line(colour = "black")) )
-
-
-# This is just an example, you can build more 
-# or less anything you want in ggplot2. 
+pirateplot(formula = Mean_log_RT ~ Condition, # plot RTs by condition
+           data = agg_data, # your dataframe
+           theme = 1, # choose 1 of 4 themes
+           
+           # customize plot!
+           back.col     = "white", # set colour of background
+           gl.col       = "white", # set colour of gridlines
+           # pal        = "pony", # you can either use a colour palette
+           pal          = c("powderblue", "chocolate3", "orangered3"), # or your own colours for the beans
+           avg.line.col = "gray22", # average line colour
+           bean.f.o     = 1,   # how transparent should the beans be?
+           point.o      = 1,   # how transparent should the points be?
+           point.pch    = 21,  # style of points
+           point.cex    = 0.8, # size of points
+           inf.method   = "ci", # plot confidence interval as box around M
+           ylab         = "mean log(RT)", # label for y-axis
+           xlab         = "Condition",    # label for x-axis
+           ylim         = c(5.22, 5.44), # set limits of y-axis
+           main         = "THIS IS F***ING SIGNIFICANT!") # humble title
 
 # There are also a lot of cool examples for plots 
 # on the internet, most of them with code you can copy 
-# --> check out pirateplots from the yarrr package or the R Graph Gallery: 
+# --> check out pirateplots from the yarrr package (we used this for the plot above) 
+# or - if you're a little more advanced - the R Graph Gallery: 
 # https://www.r-graph-gallery.com/ggplot2-package.html
+# The easystats package also has really nice plots if you're working with LMMs. :-)
+
+
+
