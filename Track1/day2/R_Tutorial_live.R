@@ -333,20 +333,35 @@ for (id in ids){
   for (cond in conds){
     
      # get subset of data with the current condition
-     curr_group <- subset(df_data_clean, condition == cond & id == id)
+     curr_group <- subset(df_data_clean, condition == cond & participant_ID == id)
+     
+     # Check if we have enough trials left for the analysis
+     # (arbitrary cutoff: We should have about 33 trials & I want at least 15 trials) 
+     # If there are less, exclude all trials (of all conditions) of current participant.
+     if (length(curr_group$condition) < 15){
+       # exclude all trials
+       df_data_clean[participant_ID == id, "excl_trial"] <- TRUE
+       # also mark them as excluded in demographics df
+       df_demographics[which(df_demographics$id == id), "exclude_participant"] <- TRUE
+       # print message
+       message( paste("excluded", id, "because they had not enough trials in condition", cond, sep = " ") )
+     }
 
-     # compute group mean & SD
-     # --> Careful, M & SD only makes sense for symmetrical distributions. 
-     # We pretend that ours are symmetrical enough (whatever that means).
-     # plot(density(curr_group$log_RTs))
-     
-     # get mean & SD
-     M  <- mean(curr_group$log_RTs)
-     SD <- sd(curr_group$log_RTs)
-     
-     # mark all trials for exclusion that have a log RT < M - 2 * SD or > M + 2 * SD:
-     outlier_idx <- which(df_data_clean$log_RTs < M - 2 * SD | df_data_clean$log_RTs > M + 2 * SD)
-     df_data_clean[outlier_idx, "excl_trial"] <- TRUE
+     # if we have enough trials, though...
+     else{
+       # compute group mean & SD
+       # --> Careful, M & SD only makes sense for symmetrical distributions. 
+       # We pretend that ours are symmetrical enough (whatever that means).
+       # plot(density(curr_group$log_RTs))
+       
+       # get mean & SD
+       M  <- mean(curr_group$log_RTs)
+       SD <- sd(curr_group$log_RTs)
+       
+       # mark all trials for exclusion that have a log RT < M - 2 * SD or > M + 2 * SD:
+       outlier_idx <- which(df_data_clean$log_RTs < M - 2 * SD | df_data_clean$log_RTs > M + 2 * SD)
+       df_data_clean[outlier_idx, "excl_trial"] <- TRUE
+     }
      
   }#END loop conditions
 }#END loop participants
@@ -398,6 +413,16 @@ names(agg_data_all) <- c("Condition", "Mean_log_RT")
 
 # 5. Inferential Stats 
 
+# First, we need a df with a mean RT for each participant in each condition.
+# aggregate data again (this time group by ID & condition):
+agg_data <- aggregate(df_data_clean$log_RT, # which variable do you want to get means for?
+                      by = list( df_data_clean$participant_ID, df_data_clean$condition ), # grouping factors: group by condition & ID
+                          FUN = mean) # compute means
+
+# assign nicer column names
+names(agg_data) <- c("ID", "Condition", "Mean_log_RT")
+
+
 # 5.1 Shapiro-Wilk Test
 # We have a super small sample, but we test the distribution here anyway so you know how to do it:
 
@@ -408,20 +433,21 @@ names(agg_data_all) <- c("Condition", "Mean_log_RT")
 # If we don't get a significant result, though, this means we couldn't show that our distribution 
 # is NOT non-normally distributed. This doesn't mean it's normally distributed, but in practice we assume it does.
 
-# (Careful here btw, normally you wouldn't test anything with such a small sample size.)
+# Careful here btw, normally you wouldn't test anything with such a small sample size. 
+# I'm just doing it here for demonstration.
 
 # If we don't get significant results, we can use 
 # parametrical tests (e.g. ANOVAs and t-tests).
 shapiro.test(subset(agg_data, Condition == "A")$Mean_log_RT)
-# p = 0.6896, so not significant on 5% alpha level --> maybe normally distributed
+# p = 0.5687, so not significant on 5% alpha level --> maybe normally distributed
 
 shapiro.test(subset(agg_data, Condition == "VA")$Mean_log_RT)
-# p = 0.4906, so not significant on 5% alpha level --> maybe normally distributed
+# p = 0.3746, so not significant on 5% alpha level --> maybe normally distributed
 
 shapiro.test(subset(agg_data, Condition == "V")$Mean_log_RT)
-# p = 0.9087, so significant on 5% alpha level --> maybe normally distributed
+# p = 0.7174, so significant on 5% alpha level --> maybe normally distributed
 
-# --> All tests are significant on a 5% alpha level, so we can use parametrical tests.
+# --> All tests are significant on a 5% alpha level, so we can use parametrical tests here.
 
 
 # 5.2 Levene Test
@@ -430,10 +456,9 @@ shapiro.test(subset(agg_data, Condition == "V")$Mean_log_RT)
 # First the leve test: It checks whether your variances don't differ between your groups.
 # If this test is significant, your variances differ between the groups. 
 leveneTest(data = agg_data, Mean_log_RT ~ as.factor(Condition))
-# p = 0.6901, aka not significant on a 5% alpha level --> use parametrical tests
+# p = 0.6545, aka not significant on a 5% alpha level --> use parametrical tests
 
 # I know I said we'll compute the Mauchly test, but we'll do that together with the ANOVA:
-
 
 # 5.3 ANOVA
 # Is there a difference between the RTs in A, V and VA?
@@ -475,8 +500,14 @@ F_val <- round(F_val, digits = 3)
 # Save the results in a new dataframe!
 df_results <- as.data.frame(cbind("ANOVA", "A, V & VA", p_val, F_val, df))
 
-# Our ANOVA was significant, so we can now use post-hoc t-tests to 
-# find out which groups are significantly different.
+# Look at the results:
+df_results
+# Our ANOVA was not significant (p = 0.149 which is smaller than our significance level of 0.05), 
+# so there is probably no difference between any pairs of the groups.
+# In cases like this, you wouldn't run post-hoc pairwise comparison tests, 
+# because they wouldn't show you significant differences anyway.
+# But we're naughty here and we'll do it anyway, just so you can see how you would do it if you 
+# found a significant difference in the ANOVA. 
 
 # --------------
 
@@ -508,7 +539,6 @@ df_results <- as.data.frame(cbind("ANOVA", "A, V & VA", p_val, F_val, df))
 
 # ----------------------------------------------------------------
 
-
 # 5.4 Post-hoc tests! 
 # (use t-tests for dependent groups)
 
@@ -520,7 +550,7 @@ ttest_V_VA <- t.test(subset(agg_data, Condition == "V")$Mean_log_RT, # H1: is > 
                      exact = F)
 # get results:
 p_val <- round(ttest_V_VA$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.005 aka significant difference here!
+# p-value = 0.324 aka no significant difference here!
 F_val <- round(ttest_V_VA$statistic, digits = 3)
 df <- ttest_V_VA$parameter 
 
@@ -536,7 +566,7 @@ ttest_A_VA <- t.test(subset(agg_data, Condition == "A")$Mean_log_RT, # H1: is > 
                      exact = F)
 # get results:
 p_val <- round(ttest_A_VA$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.000002408008 aka significant difference here!
+# p-value = 0.141 aka no significant difference here!
 F_val <- round(ttest_A_VA$statistic, digits = 3)
 df <- ttest_A_VA$parameter 
 
@@ -552,7 +582,7 @@ ttest_A_V <- t.test(subset(agg_data, Condition == "A")$Mean_log_RT, # H1: is > t
                     exact = F)
 # get results:
 p_val <- round(ttest_A_V$p.value * 3, digits = 3) # Bonferroni-Holm correction for multiple comparisons
-# p-value = 0.02275132 aka significant difference here!
+# p-value = 0.653 aka no significant difference here!
 F_val <- round(ttest_A_V$statistic, digits = 3)
 df <- ttest_A_V$parameter 
 
@@ -570,7 +600,8 @@ write.csv(agg_data, file = "/Users/merle/Github/SpringSchool2023/Track1/day2/pre
 # ----------------------------------------------------------------
 
 # 7. Plots
-# Now we want to plot our results so the world can see all this glory.
+# Now we want to plot our results so the world can 
+# see all this non-significant glory.
 
 # You can use this website to get pretty colors for your plot:
 # https://www.color-hex.com/
@@ -593,7 +624,7 @@ pirateplot(formula = Mean_log_RT ~ Condition, # plot RTs by condition
            ylab         = "mean log(RT)", # label for y-axis
            xlab         = "Condition",    # label for x-axis
            ylim         = c(5.22, 5.44), # set limits of y-axis
-           main         = "THIS IS F***ING SIGNIFICANT!") # humble title
+           main         = "Hi, I'm a plot!") # humble title
 
 # There are also a lot of cool examples for plots 
 # on the internet, most of them with code you can copy 
@@ -601,6 +632,3 @@ pirateplot(formula = Mean_log_RT ~ Condition, # plot RTs by condition
 # or - if you're a little more advanced - the R Graph Gallery: 
 # https://www.r-graph-gallery.com/ggplot2-package.html
 # The easystats package also has really nice plots if you're working with LMMs. :-)
-
-
-
