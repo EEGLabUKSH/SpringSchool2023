@@ -12,10 +12,11 @@
 % Go to Current Folder
 clear all
 close all
+clc
 ft_defaults; % Set the defualts of the FieldTrip Toolbox
 
 % Where are the data?
-inpath = ('/Users/juliankeil/Documents/Arbeit/Kiel/Lehre/WS2021/Springschool Open Science 2022/GitHub/track_02/02_Data/');% What are the data called?
+inpath = ('/Users/juliankeil/Documents/Arbeit/Kiel/Lehre/WS2022/SpringSchool2023/SpringSchool2023/Track2/02_Data/');% What are the data called?
 
 indat = dir([inpath,'*_preproc.mat']);
 
@@ -74,7 +75,7 @@ GA_tar = ft_timelockgrandaverage(cfg,ERP_tar_bl{:});
     % 5.2. You can also look at all channels at the same time
     cfg = [];
     cfg.xlim = [-.5 1]; % Set the interval to display
-    cfg.layout = 'EEG1020.lay'; % Set the channel layout
+    cfg.layout = 'EEG1005.lay'; % Set the channel layout
 
     ft_multiplotER(cfg,GA_sta,GA_tar);
     
@@ -128,7 +129,7 @@ end
         [tmppeaks(c) tmplat(c)] = max(abs(GA_ROI_all.avg(c,starti:endi)));
     end
 
-    peaks = zeros(length(ROI_sta_bl),3,2);
+    peaks = zeros(length(ROI_sta_bl),2,2);
     for v = 1:length(ROI_sta_bl) % Loop VPn
         for c = 1:size(ROI_sta_bl{v}.avg,1) % Loop Channels
             peaks(v,c,1) = mean(ROI_sta_bl{v}.avg(c,starti+tmplat(c)-10 : starti+tmplat(c)+10));

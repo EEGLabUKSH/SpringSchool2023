@@ -18,7 +18,7 @@ clc
 ft_defaults; % Set the defualts of the FieldTrip Toolbox
 
 % Where are the data?
-inpath = ('/Users/juliankeil/Documents/Arbeit/Kiel/Lehre/WS2021/Springschool Open Science 2022/GitHub/track_02/02_Data/');
+inpath = ('/Users/juliankeil/Documents/Arbeit/Kiel/Lehre/WS2022/SpringSchool2023/SpringSchool2023/Track2/02_Data/');
 % What are the data called?
 indat = dir([inpath,'*.xdf']);
 
@@ -35,11 +35,12 @@ for v = 1:length(indat)
     % 1.1. First, read in the header to define the trials
     cfg = []; % Always clear the configuration
     cfg.dataset = [inpath,indat(v).name]; % Set the dataset
-%   cfg.trialfun = 'ft_trialfun_show'; % If we don't know what events have happened
-    cfg.trialdef.eventtype = 'Markers'; % We now know that the trigger channel is called 'Stimulus'
-    cfg.trialdef.eventvalue = {20,30}; % Define the relevant triggers
-    cfg.trialdef.prestim = 1.5; % Seconds before the stimulus
-    cfg.trialdef.poststim = 1.5; % Seconds after the stimulus
+    %cfg.trialfun = 'ft_trialfun_show'; % If we don't know what events have happened
+%     cfg.trialdef.eventtype = 'Markers'; % We now know that the trigger channel is called 'Stimulus'
+%     cfg.trialdef.eventvalue = {20,30}; % Define the relevant triggers
+%     cfg.trialdef.prestim = 1; % Seconds before the stimulus
+%     cfg.trialdef.poststim = 1; % Seconds after the stimulus
+    cfg.trialdef.triallength = 4;
 
     cfg = ft_definetrial(cfg); % Store the trial definition
 
@@ -97,19 +98,19 @@ for v = 1:length(indat)
         ft_databrowser(cfg,data_t); % we call the databrowser with the cfg-settings and the dat-structure defined above
    
     %% 3. Visual Artifact Rejection
-%     cfg = [];
-%     cfg.method = 'summary';
-%     cfg.layout = 'EEG1020.lay';
-%     cfg.keepchannel = 'no'; % Remove Bad channels
-%     % We can also specify filters just for the artifact rejection
-%     % These settings are good to identify eye blinks
-%     cfg.preproc.bpfilter = 'yes';
-%     cfg.preproc.bpfilttype = 'but';
-%     cfg.preproc.bpfreq = [1 15];
-%     cfg.preproc.bpfiltord = 4;
-%     cfg.preproc.rectify = 'yes';
-%     
-%     data_c = ft_rejectvisual(cfg,data_t);
+    cfg = [];
+    cfg.method = 'summary';
+    cfg.layout = 'EEG1020.lay';
+    cfg.keepchannel = 'no'; % Remove Bad channels
+    % We can also specify filters just for the artifact rejection
+    % These settings are good to identify eye blinks
+    cfg.preproc.bpfilter = 'yes';
+    cfg.preproc.bpfilttype = 'firws';
+    cfg.preproc.bpfreq = [1 15];
+    cfg.preproc.bpfiltord = 4;
+    cfg.preproc.rectify = 'yes';
+    
+    data_ci = ft_rejectvisual(cfg,data_ci);
     
     % You have different options to identify artifacts.
     % The most useful are:
@@ -187,8 +188,8 @@ for v = 1:length(indat)
                 outs(t) = any(zval_t(t) >= z_thresh ...
                             | kurt_t(t) >= k_thresh ...
                             | std_t(t) >= v_thresh ...
-                            | max_t(t) == 150 ...
-                            | min_t(t) == -150);
+                            | max_t(t) >= 150 ...
+                            | min_t(t) <= -150);
             end
 
             goodtrials = find(outs == 0); % Select what's left

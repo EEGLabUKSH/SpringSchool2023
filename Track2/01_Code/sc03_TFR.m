@@ -12,10 +12,11 @@
 % Go to Current Folder
 clear all
 close all
+clc
 ft_defaults; % Set the defualts of the FieldTrip Toolbox
 
 % Where are the data?
-inpath = ('/Users/juliankeil/Documents/Arbeit/Kiel/Lehre/WS2021/Springschool Open Science 2022/GitHub/track_02/02_Data/');
+inpath = ('/Users/juliankeil/Documents/Arbeit/Kiel/Lehre/WS2022/SpringSchool2023/SpringSchool2023/Track2/02_Data/');% What are the data called?
 % What are the data called?
 indat = dir([inpath,'*_preproc.mat']);
 
@@ -24,39 +25,39 @@ for v = 1:length(indat)
     %% 1. Load the preprocessed data
     load([inpath,indat(v).name]);
     
-    %% 2. Option 1: FFT
-    % The Fourier Transform computes the power spectral density for each frequency across time
-    
-    % 2.1.Cut the Data into Baseline and Activation
-    cfg=[];
-    cfg.toilim=[-.6 -.1]; % Define the Time-Window for the Baseline. Should be as long as the activation window
-    bl_sta=ft_redefinetrial(cfg,data_sta);
-    bl_tar=ft_redefinetrial(cfg,data_tar);
-
-    cfg.toilim=[0 .5]; % Define the window in which the activation takes place 
-    act_sta=ft_redefinetrial(cfg,data_sta);
-    act_tar=ft_redefinetrial(cfg,data_tar);
-    
-    % 2.2. Settings for FFT
-    cfg=[];
-    cfg.method='mtmfft'; % Method: Fourier Transformation
-    cfg.output='pow'; % Output parameter
-    cfg.foi=[2:1:40]; % Frequency resolution
-    cfg.taper = 'hanning';
-  
-        % 2.2.1. FFT for Standard
-        bl = ft_freqanalysis(cfg,bl_sta);
-        act = ft_freqanalysis(cfg,act_sta);
-        % Normalize by baseline
-        bl_TFR_sta{v} = act;
-        bl_TFR_sta{v}.powspctrm = (act.powspctrm - bl.powspctrm)./bl.powspctrm;
-    
-        % 2.2.2. FFT for Target
-        bl = ft_freqanalysis(cfg,bl_tar);
-        act = ft_freqanalysis(cfg,act_tar);
-        % Normalize by baseline
-        bl_TFR_tar{v} = act;
-        bl_TFR_tar{v}.powspctrm = (act.powspctrm - bl.powspctrm)./bl.powspctrm;
+%     %% 2. Option 1: FFT
+%     % The Fourier Transform computes the power spectral density for each frequency across time
+%     
+%     % 2.1.Cut the Data into Baseline and Activation
+%     cfg=[];
+%     cfg.toilim=[-.6 -.1]; % Define the Time-Window for the Baseline. Should be as long as the activation window
+%     bl_sta=ft_redefinetrial(cfg,data_sta);
+%     bl_tar=ft_redefinetrial(cfg,data_tar);
+% 
+%     cfg.toilim=[0 .5]; % Define the window in which the activation takes place 
+%     act_sta=ft_redefinetrial(cfg,data_sta);
+%     act_tar=ft_redefinetrial(cfg,data_tar);
+%     
+%     % 2.2. Settings for FFT
+%     cfg=[];
+%     cfg.method='mtmfft'; % Method: Fourier Transformation
+%     cfg.output='pow'; % Output parameter
+%     cfg.foi=[2:1:40]; % Frequency resolution
+%     cfg.taper = 'hanning';
+%   
+%         % 2.2.1. FFT for Standard
+%         bl = ft_freqanalysis(cfg,bl_sta);
+%         act = ft_freqanalysis(cfg,act_sta);
+%         % Normalize by baseline
+%         bl_TFR_sta{v} = act;
+%         bl_TFR_sta{v}.powspctrm = (act.powspctrm - bl.powspctrm)./bl.powspctrm;
+%     
+%         % 2.2.2. FFT for Target
+%         bl = ft_freqanalysis(cfg,bl_tar);
+%         act = ft_freqanalysis(cfg,act_tar);
+%         % Normalize by baseline
+%         bl_TFR_tar{v} = act;
+%         bl_TFR_tar{v}.powspctrm = (act.powspctrm - bl.powspctrm)./bl.powspctrm;
     
     %% 3. Option 2: Wavelet
     % The Wavelet transform multiplies a time-window around each timepoint with a
@@ -90,40 +91,47 @@ for v = 1:length(indat)
     bl_TFR_sta{v}=ft_freqbaseline(cfg,TFR_sta{v});
     bl_TFR_tar{v}=ft_freqbaseline(cfg,TFR_tar{v});
     
-    %% 4. Option 3: Multitaper Convolution
-    % The multitaper convolution transform multiplies a time-window around each timepoint with a
-    % frequency-specific taper function, which can be tuned very finely.
-    % Again, this results in the power spectral density for each frequency at each timepoint
-    
-    % 4.1. Settings for the multitaper
-    cfg=[];
-    cfg.method='mtmconvol'; % Method: Multitaper Convolution
-    cfg.output='pow'; % Output parameter
-    cfg.foi=[2:1:40]; % Frequency resolution
-    cfg.toi=[-.5:.01: .5]; % Temporal resolution
-    
-        % 4.1.1. Option 3.1.: Adaptive Hann Tapers (looks like a Normal
-        % distribution
-        cfg.t_ftimwin = 3./cfg.foi; % Number of cycles per frequency, c.f. Wavelet
-        cfg.taper = 'hanning'; % Frequency-Adaptive Smoothing
-    
-        % 4.1.2. Option 3.2.: Fixed Slepian Tapers (can also be adaptive)
-        cfg.t_ftimwin = 0.2 * ones(numel(cfg.foi)); % Fixed 200ms Time Window
-        cfg.tapsmofrq = 10 * ones(numel(cfg.foi)); % Fixed 10 Hz Smoothing
-        cfg.taper = 'dpss'; % Adapt Slepian Tapers to the time-frequency window
+%     %% 4. Option 3: Multitaper Convolution
+%     % The multitaper convolution transform multiplies a time-window around each timepoint with a
+%     % frequency-specific taper function, which can be tuned very finely.
+%     % Again, this results in the power spectral density for each frequency at each timepoint
+%     
+%     % 4.1. Settings for the multitaper
+%     cfg=[];
+%     cfg.method='mtmconvol'; % Method: Multitaper Convolution
+%     cfg.output='pow'; % Output parameter
+%     cfg.foi=[2:1:40]; % Frequency resolution
+%     cfg.toi=[-.5:.01: .5]; % Temporal resolution
+%     
+%         % 4.1.1. Option 3.1.: Adaptive Hann Tapers (looks like a Normal
+%         % distribution
+%         cfg.t_ftimwin = 3./cfg.foi; % Number of cycles per frequency, c.f. Wavelet
+%         cfg.taper = 'hanning'; % Frequency-Adaptive Smoothing
+%     
+%         % 4.1.2. Option 3.2.: Fixed Slepian Tapers (can also be adaptive)
+%         cfg.t_ftimwin = 0.2 * ones(numel(cfg.foi)); % Fixed 200ms Time Window
+%         cfg.tapsmofrq = 10 * ones(numel(cfg.foi)); % Fixed 10 Hz Smoothing
+%         cfg.taper = 'dpss'; % Adapt Slepian Tapers to the time-frequency window
+% 
+%     % Compute the multitaper transform
+%     TFR_sta{v}=ft_freqanalysis(cfg,data_sta);
+%     TFR_tar{v}=ft_freqanalysis(cfg,data_tar);
+% 
+%     % 4.2. Baseline-correction
+%     cfg=[];
+%     cfg.baseline=[-.5 -.1]; % Baseline
+%     cfg.baselinetype='relchange'; % Method, same as for FFT above
+%     cfg.parameter='powspctrm'; % Input parameter
+% 
+%     bl_TFR_sta{v}=ft_freqbaseline(cfg,TFR_sta{v});
+%     bl_TFR_tar{v}=ft_freqbaseline(cfg,TFR_tar{v});
 
-    % Compute the multitaper transform
-    TFR_sta{v}=ft_freqanalysis(cfg,data_sta);
-    TFR_tar{v}=ft_freqanalysis(cfg,data_tar);
-
-    % 4.2. Baseline-correction
-    cfg=[];
-    cfg.baseline=[-.5 -.1]; % Baseline
-    cfg.baselinetype='relchange'; % Method, same as for FFT above
-    cfg.parameter='powspctrm'; % Input parameter
-
-    bl_TFR_sta{v}=ft_freqbaseline(cfg,TFR_sta{v});
-    bl_TFR_tar{v}=ft_freqbaseline(cfg,TFR_tar{v});
+%% Correct the time vectors
+    bl_TFR_sta{v}.time = bl_TFR_sta{1}.time;
+    bl_TFR_tar{v}.time = bl_TFR_tar{1}.time;
+    
+    bl_TFR_sta{v}.freq = bl_TFR_sta{1}.freq;
+    bl_TFR_tar{v}.freq = bl_TFR_tar{1}.freq;
 end
 
 %% 5. Grand Average
